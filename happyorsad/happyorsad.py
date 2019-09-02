@@ -18,7 +18,7 @@ zip_ref.close()
 
 class myCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
-        if(logs.get('acc') > 0.999):
+        if(logs.get('acc') > DESIRED_ACCURACY):
             print("\nReached 99.9% accuracy.")
             self.model.stop_training = True
 
