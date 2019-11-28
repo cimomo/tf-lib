@@ -6,6 +6,14 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
     https://storage.googleapis.com/laurencemoroney-blog.appspot.com/bbc-text.csv \
     -O /tmp/bbc-text.csv
 
+vocab_size = 1000
+embedding_dim = 16
+max_length = 120
+trunc_type = 'post'
+padding_type = 'post'
+oov_tok = "<OOV>"
+training_portion = .8
+
 stopwords = ["a", "about", "above", "after", "again", "against", "all",
              "am", "an", "and", "any", "are", "as", "at", "be", "because",
              "been", "before", "being", "below", "between", "both", "but",
@@ -30,6 +38,7 @@ stopwords = ["a", "about", "above", "after", "again", "against", "all",
 
 sentences = []
 labels = []
+
 with open("/tmp/bbc-text.csv", 'r') as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     next(reader)
@@ -42,17 +51,39 @@ with open("/tmp/bbc-text.csv", 'r') as csvfile:
             sentence = sentence.replace("  ", " ")
         sentences.append(sentence)
 
-tokenizer = Tokenizer(oov_token="<OOV>")
-tokenizer.fit_on_texts(sentences)
+train_size = int(len(sentences) * training_portion)
+
+train_sentences = sentences[:train_size]
+train_labels = labels[:train_size]
+
+validation_sentences = sentences[train_size:]
+validation_labels = labels[train_size:]
+
+tokenizer = Tokenizer(num_words=vocab_size, oov_token=oov_tok)
+tokenizer.fit_on_texts(train_sentences)
 word_index = tokenizer.word_index
 
-sequences = tokenizer.texts_to_sequences(sentences)
-padded = pad_sequences(sequences, padding='post')
+train_sequences = tokenizer.texts_to_sequences(train_sentences)
+train_padded = pad_sequences(train_sequences, padding=padding_type, maxlen=max_length)
+
+validation_sequences = tokenizer.texts_to_sequences(validation_sentences)
+validation_padded = pad_sequences(validation_sequences, padding=padding_type, maxlen=max_length)
 
 label_tokenizer = Tokenizer()
 label_tokenizer.fit_on_texts(labels)
-label_word_index = label_tokenizer.word_index
-label_seq = label_tokenizer.texts_to_sequences(labels)
 
-print(label_seq)
-print(label_word_index)
+training_label_seq = np.array(label_tokenizer.texts_to_sequences(train_labels))
+validation_label_seq = np.array(label_tokenizer.texts_to_sequences(validation_labels))
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Embedding(vocab_size, embedding_dim, input_length=max_length),
+    tf.keras.layers.GlobalAveragePooling1D(),
+    tf.keras.layers.Dense(24, activation='relu'),
+    tf.keras.layers.Dense(6, activation='softmax')
+])
+
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.summary()
+
+num_epochs = 30
+history = model.fit(train_padded, training_label_seq, epochs=num_epochs, validation_data=(validation_padded, validation_label_seq), verbose=2)
