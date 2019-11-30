@@ -1,6 +1,7 @@
 import csv
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+import matplotlib.pyplot as plt
 
 !wget --no-check-certificate \
     https://storage.googleapis.com/laurencemoroney-blog.appspot.com/bbc-text.csv \
@@ -87,3 +88,15 @@ model.summary()
 
 num_epochs = 30
 history = model.fit(train_padded, training_label_seq, epochs=num_epochs, validation_data=(validation_padded, validation_label_seq), verbose=2)
+
+
+def plot_graphs(history, string):
+  plt.plot(history.history[string])
+  plt.plot(history.history['val_'+string])
+  plt.xlabel("Epochs")
+  plt.ylabel(string)
+  plt.legend([string, 'val_'+string])
+  plt.show()
+
+plot_graphs(history, "acc")
+plot_graphs(history, "loss")
